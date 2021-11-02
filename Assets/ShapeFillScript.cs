@@ -78,7 +78,7 @@ public class ShapeFillScript : MonoBehaviour
         bool[] fillChecks = new bool[8];
         for (int i = 0; i < ShapeFillObjs.Length; i++)
         {
-        tryAgain2:
+            tryAgain2:
             int rnd = Rnd.Range(0, ShapeTextures.Length);
             if (rnd / 8 == _shapeRestrictions[0])
                 goto tryAgain2;
@@ -152,54 +152,82 @@ public class ShapeFillScript : MonoBehaviour
     private bool SubmitPress()
     {
         Debug.LogFormat("[Shape Fill #{0}] Submit press.", _moduleId);
-        bool satisfied = true;
+        for (var restrIx = 0; restrIx < _restrictions.Count; restrIx++)
+        {
+            if (!_restDelegates[_restrictions[restrIx]](CurrentShapeInfo))
+            {
+                Debug.LogFormat("[Shape Fill #{0}] Restriction #{1} is violated.", _moduleId, restrIx + 1);
+                Module.HandleStrike();
+                return false;
+            }
+        }
+
+        Debug.LogFormat("[Shape Fill #{0}] Module solved.", _moduleId);
+        Module.HandlePass();
         return false;
     }
 
-    private static T[] arrthing<T>(params T[] array) { return array; }
+    private static T[] newArray<T>(params T[] array) { return array; }
 
-    private static readonly Func<int[], bool>[] _restDelegates = arrthing<Func<int[], bool>>(
-        info => // A
-        {
-            int[] ix = { 6, 7, 8, 11, 12, 13, 16, 17, 18 };
-            for (int i = 0; i < 9; i++)
-                if (info[ix[i]] / 8 == 6)
-                    return false;
-            return true;
-        },
-        info => // B
-        {
-            return Enumerable.Range(0, 8).Count(shape => info.Count(s => s / 8 == shape) == 2) == 4;
-        },
-        info => // C
-        {
-            for (int i = 0; i < 25; i++)
-            {
-                if (info[i] / 8 == 7)
-                {
-                    List<int> adj = new List<int>();
-                    if (i % 5 != 0)
-                        adj.Add(info[i - 1] / 8);
-                    if (i % 5 != 4)
-                        adj.Add(info[i + 1] / 8);
-                    if (i / 5 != 0)
-                        adj.Add(info[i - 5] / 8);
-                    if (i / 5 != 4)
-                        adj.Add(info[i + 5] / 8);
-                    if (!adj.Contains(7))
-                        return false;
-                }
-            }
-            return true;
-        },
-        info => // D
-        {
-            int[] ix = arrthing(info[0] / 8, info[5] / 8, info[10] / 8, info[15] / 8, info[20] / 8, info[4] / 8, info[9] / 8, info[14] / 8, info[19] / 8, info[24] / 8);
-            return ix.Contains(0) && ix.Contains(1) && ix.Contains(2) && ix.Contains(3) && ix.Contains(4) && ix.Contains(5) && ix.Contains(6) && ix.Contains(7);
-        },
-        info => // E
-        {
+    private const int gridWidth = 5;
+    private const int gridHeight = 5;
 
-        }
-    );
+    /// <summary>Returns the set of cells adjacent to the specified cell (including diagonals).</summary>
+    private static IEnumerable<int> Adjacent(int cell)
+    {
+        var x = cell % gridWidth;
+        var y = cell / gridHeight;
+        for (var xx = x - 1; xx <= x + 1; xx++)
+            if (xx >= 0 && xx < gridWidth)
+                for (var yy = y - 1; yy <= y + 1; yy++)
+                    if (yy >= 0 && yy < gridHeight && (xx != x || yy != y))
+                        yield return xx + gridWidth * yy;
+    }
+
+    /// <summary>Returns the set of cells orthogonally adjacent to the specified cell (no diagonals).</summary>
+    private static IEnumerable<int> Orthogonal(int cell)
+    {
+        var x = cell % gridWidth;
+        var y = cell / gridHeight;
+        for (var xx = x - 1; xx <= x + 1; xx++)
+            if (xx >= 0 && xx < gridWidth)
+                for (var yy = y - 1; yy <= y + 1; yy++)
+                    if (yy >= 0 && yy < gridHeight && (xx == x || yy == y) && (xx != x || yy != y))
+                        yield return xx + gridWidth * yy;
+    }
+
+    /// <summary>Returns the set of cells orthogonally adjacent to the specified cell (no diagonals).</summary>
+    private static IEnumerable<int> Diagonal(int cell)
+    {
+        return Adjacent(cell).Except(Orthogonal(cell));
+    }
+
+    private static readonly Func<int[], bool>[] _restDelegates = newArray<Func<int[], bool>>(
+        /* A */ info => new[] { 6, 7, 8, 11, 12, 13, 16, 17, 18 }.All(cell => info[cell] / 8 != 6),
+        /* B */ info => Enumerable.Range(0, 8).Count(shape => info.Count(s => s / 8 == shape) == 2) == 4,
+        /* C */ info => Enumerable.Range(0, 25).All(cell => info[cell] / 8 != 7 || Orthogonal(cell).Any(c => info[c] / 8 == 7)),
+        /* D */ info => new[] { 1, 3, 6, 8, 11, 13, 16, 18, 21, 23 }.Select(cell => info[cell] / 8).Distinct().Count() == 8,
+        /* E */ info => !Enumerable.Range(0, 25).Any(cell => Diagonal(cell).Any(c => info[cell] / 8 == info[c] / 8)),
+        /* F */ info => Enumerable.Range(0, 2).All(col => Enumerable.Range(0, 5).All(row => info[col + 5 * row] / 8 != 3)) || Enumerable.Range(3, 2).All(col => Enumerable.Range(0, 5).All(row => info[col + 5 * row] / 8 != 3)),
+        /* G */ info => Enumerable.Range(0, 5).All(col => Enumerable.Range(0, 5).Count(row => info[col + 5 * row] / 8 == 4) == 1) && Enumerable.Range(0, 5).All(row => Enumerable.Range(0, 5).Count(col => info[col + 5 * row] / 8 == 4) == 1),
+        /* H */ info => Enumerable.Range(0, 25).Count(cell => info[cell] / 8 == 1) == Enumerable.Range(0, 25).Where(cell => info[cell] / 8 == 1).Select(cell => info[cell] % 8).Distinct().Count(),
+        /* I */ info => Enumerable.Range(0, 25).All(cell => cell % 5 == 2 || (cell % 5 < 2 ? info[cell] / 8 != 2 : info[cell] / 8 != 1)) || Enumerable.Range(0, 25).All(cell => cell % 5 == 2 || (cell % 5 < 2 ? info[cell] / 8 != 1 : info[cell] / 8 != 2)),
+        /* J */ info => new[] { 0, 4, 12, 20, 24 }.Select(cell => info[cell] / 8).Distinct().Count() == 5,
+        /* K */ info => new[] { 0, 1, 2, 3, 4, 5, 9, 10, 14, 15, 19, 20, 21, 22, 23, 24 }.All(cell => info[cell] / 8 != 0),
+        /* L */ info => Enumerable.Range(0, 25).All(cell => info[cell] / 8 != 2 || info[cell] % 8 == 0),
+        /* M */ info => Enumerable.Range(0, 5).Any(col => Enumerable.Range(0, 5).All(row => info[col + 5 * row] / 8 == 5)),
+        /* N */ info => Enumerable.Range(0, 5).Any(row => Enumerable.Range(0, 5).All(col => info[col + 5 * row] % 8 == 7)),
+        /* O */ info => !Enumerable.Range(0, 25).Any(cell => Diagonal(cell).Any(c => info[cell] % 8 == info[c] % 8)),
+        /* P */ info => Enumerable.Range(0, 5).All(col => Enumerable.Range(0, 5).Count(row => info[col + 5 * row] % 8 == 3) == 1) && Enumerable.Range(0, 5).All(row => Enumerable.Range(0, 5).Count(col => info[col + 5 * row] % 8 == 3) == 1),
+        /* Q */ info => new[] { 0, 4, 12, 20, 24 }.Select(cell => info[cell] % 8).Distinct().Count() == 5,
+        /* R */ info => Enumerable.Range(0, 25).All(cell => info[cell] % 8 != 0 || info[cell] / 8 == 2),
+        /* S */ info => Enumerable.Range(0, 8).Count(fill => info.Count(s => s % 8 == fill) == 2) == 4,
+        /* T */info => Enumerable.Range(0, 25).All(cell => info[cell] % 8 != 6 || Orthogonal(cell).Any(c => info[c] % 8 == 6)),
+        /* U */ info => Enumerable.Range(0, 2).All(row => Enumerable.Range(0, 5).All(col => info[col + 5 * row] % 8 != 5)) || Enumerable.Range(3, 2).All(row => Enumerable.Range(0, 5).All(col => info[col + 5 * row] % 8 != 5)),
+        /* V */ info => Enumerable.Range(0, 25).All(cell => cell / 5 == 2 || (cell / 5 < 2 ? info[cell] % 8 != 0 : info[cell] % 8 != 1)) || Enumerable.Range(0, 25).All(cell => cell / 5 == 2 || (cell / 5 < 2 ? info[cell] % 8 != 1 : info[cell] % 8 != 0)),
+        /* W */ info => new[] { 6, 7, 8, 11, 12, 13, 16, 17, 18 }.All(cell => info[cell] % 8 != 2),
+        /* X */ info => new[] { 0, 1, 2, 3, 4, 5, 9, 10, 14, 15, 19, 20, 21, 22, 23, 24 }.All(cell => info[cell] % 8 != 4),
+        /* Y */ info => Enumerable.Range(0, 25).Count(cell => info[cell] % 8 == 1) == Enumerable.Range(0, 25).Where(cell => info[cell] % 8 == 1).Select(cell => info[cell] / 8).Distinct().Count(),
+        /* Z */ info => new[] { 5, 6, 7, 8, 9, 15, 16, 17, 18, 19 }.Select(cell => info[cell] % 8).Distinct().Count() == 8,
+        /* extra restriction */ info => Enumerable.Range(0, 8).All(value => Enumerable.Range(0, 25).Count(cell => info[cell] / 8 == value) >= 2 && Enumerable.Range(0, 25).Count(cell => info[cell] % 8 == value) >= 2));
 }
