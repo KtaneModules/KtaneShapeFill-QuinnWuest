@@ -49,6 +49,7 @@ public class ShapeFillScript : MonoBehaviour
         new int[4] {11, 8, 1, 3},
         new int[4] {7, 10, 12, 3},
         new int[4] {1, 9, 5, 6},
+
         new int[4] {23, 24, 15, 13},
         new int[4] {16, 14, 25, 18},
         new int[4] {19, 17, 21, 22},
@@ -78,7 +79,7 @@ public class ShapeFillScript : MonoBehaviour
         bool[] fillChecks = new bool[8];
         for (int i = 0; i < ShapeFillObjs.Length; i++)
         {
-            tryAgain2:
+        tryAgain2:
             int rnd = Rnd.Range(0, ShapeTextures.Length);
             if (rnd / 8 == _shapeRestrictions[0])
                 goto tryAgain2;
@@ -104,34 +105,41 @@ public class ShapeFillScript : MonoBehaviour
         while (_restrictions.Contains(restr2))
             restr2 = (restr2 + 3) % 26;
         _restrictions.Add(restr2);
-        var restr3 = restrIx[_fillRestrictions[1]][SerialNumber[2]];
+        var restr3 = restrIx[_fillRestrictions[1] + 8][SerialNumber[2]];
         while (_restrictions.Contains(restr3))
             restr3 = (restr3 + 3) % 26;
         _restrictions.Add(restr3);
-        var restr4 = restrIx[_fillRestrictions[0]][SerialNumber[3]];
+        var restr4 = restrIx[_fillRestrictions[0] + 8][SerialNumber[3]];
         while (_restrictions.Contains(restr4))
             restr4 = (restr4 + 3) % 26;
         _restrictions.Add(restr4);
+        Debug.LogFormat("[Shape Fill #{0}] The restrictions in place are {1}", _moduleId, _restrictions.Select(r => (char)(r + 'A')).Join(", "));
         _restrictions.Add(26);
     }
 
     private bool TogglePress()
     {
-        Debug.LogFormat("[Shape Fill #{0}] Toggle press.", _moduleId);
-        _toggleIsFill = !_toggleIsFill;
-        ToggleText.text = _toggleIsFill ? "FILL" : "SHAPE";
+        if (!_moduleSolved)
+        {
+            Debug.LogFormat("[Shape Fill #{0}] Toggle press.", _moduleId);
+            _toggleIsFill = !_toggleIsFill;
+            ToggleText.text = _toggleIsFill ? "FILL" : "SHAPE";
+        }
         return false;
     }
 
     private bool ResetPress()
     {
-        Debug.LogFormat("[Shape Fill #{0}] Reset press.", _moduleId);
-        for (int i = 0; i < 25; i++)
+        if (!_moduleSolved)
         {
-            CurrentShapeInfo[i] = InitialShapeInfo[i];
-            ShapeFillObjs[i].GetComponent<MeshRenderer>().material.mainTexture = ShapeTextures[InitialShapeInfo[i]];
+            Debug.LogFormat("[Shape Fill #{0}] Reset press.", _moduleId);
+            for (int i = 0; i < 25; i++)
+            {
+                CurrentShapeInfo[i] = InitialShapeInfo[i];
+                ShapeFillObjs[i].GetComponent<MeshRenderer>().material.mainTexture = ShapeTextures[InitialShapeInfo[i]];
+            }
+            Light.GetComponent<MeshRenderer>().material = LightMats[0];
         }
-        Light.GetComponent<MeshRenderer>().material = LightMats[0];
         return false;
     }
 
@@ -139,31 +147,39 @@ public class ShapeFillScript : MonoBehaviour
     {
         return delegate ()
         {
-            Light.GetComponent<MeshRenderer>().material = LightMats[3];
-            if (_toggleIsFill)
-                CurrentShapeInfo[shape] = ((CurrentShapeInfo[shape] / 8) * 8) + (((CurrentShapeInfo[shape] % 8) + 1) % 8);
-            if (!_toggleIsFill)
-                CurrentShapeInfo[shape] = (CurrentShapeInfo[shape] + 8) % 64;
-            ShapeFillObjs[shape].GetComponent<MeshRenderer>().material.mainTexture = ShapeTextures[CurrentShapeInfo[shape]];
+            if (!_moduleSolved)
+            {
+                Light.GetComponent<MeshRenderer>().material = LightMats[3];
+                if (_toggleIsFill)
+                    CurrentShapeInfo[shape] = ((CurrentShapeInfo[shape] / 8) * 8) + (((CurrentShapeInfo[shape] % 8) + 1) % 8);
+                if (!_toggleIsFill)
+                    CurrentShapeInfo[shape] = (CurrentShapeInfo[shape] + 8) % 64;
+                ShapeFillObjs[shape].GetComponent<MeshRenderer>().material.mainTexture = ShapeTextures[CurrentShapeInfo[shape]];
+            }
             return false;
         };
     }
 
     private bool SubmitPress()
     {
-        Debug.LogFormat("[Shape Fill #{0}] Submit press.", _moduleId);
-        for (var restrIx = 0; restrIx < _restrictions.Count; restrIx++)
+        if (!_moduleSolved)
         {
-            if (!_restDelegates[_restrictions[restrIx]](CurrentShapeInfo))
+            Debug.LogFormat("[Shape Fill #{0}] Submit press.", _moduleId);
+            for (var restrIx = 0; restrIx < _restrictions.Count; restrIx++)
             {
-                Debug.LogFormat("[Shape Fill #{0}] Restriction #{1} is violated.", _moduleId, restrIx + 1);
-                Module.HandleStrike();
-                return false;
+                if (!_restDelegates[_restrictions[restrIx]](CurrentShapeInfo))
+                {
+                    Debug.LogFormat("[Shape Fill #{0}] Restriction #{1} ({2}) is violated.", _moduleId, restrIx + 1, _restrictions[restrIx] == 26 ? "default" : ((char)(_restrictions[restrIx] + 'A')).ToString());
+                    Module.HandleStrike();
+                    Light.GetComponent<MeshRenderer>().material = LightMats[2];
+                    return false;
+                }
             }
+            Debug.LogFormat("[Shape Fill #{0}] Module solved.", _moduleId);
+            Module.HandlePass();
+            _moduleSolved = true;
+            Light.GetComponent<MeshRenderer>().material = LightMats[1];
         }
-
-        Debug.LogFormat("[Shape Fill #{0}] Module solved.", _moduleId);
-        Module.HandlePass();
         return false;
     }
 
@@ -215,14 +231,14 @@ public class ShapeFillScript : MonoBehaviour
         /* J */ info => new[] { 0, 4, 12, 20, 24 }.Select(cell => info[cell] / 8).Distinct().Count() == 5,
         /* K */ info => new[] { 0, 1, 2, 3, 4, 5, 9, 10, 14, 15, 19, 20, 21, 22, 23, 24 }.All(cell => info[cell] / 8 != 0),
         /* L */ info => Enumerable.Range(0, 25).All(cell => info[cell] / 8 != 2 || info[cell] % 8 == 0),
-        /* M */ info => Enumerable.Range(0, 5).Any(col => Enumerable.Range(0, 5).All(row => info[col + 5 * row] / 8 == 5)),
-        /* N */ info => Enumerable.Range(0, 5).Any(row => Enumerable.Range(0, 5).All(col => info[col + 5 * row] % 8 == 7)),
+        /* M */ info => Enumerable.Range(0, 5).Count(col => Enumerable.Range(0, 5).Any(row => info[col + 5 * row] / 8 == 5)) <= 1,
+        /* N */ info => Enumerable.Range(0, 5).Count(row => Enumerable.Range(0, 5).Any(col => info[col + 5 * row] % 8 == 7)) <= 1,
         /* O */ info => !Enumerable.Range(0, 25).Any(cell => Diagonal(cell).Any(c => info[cell] % 8 == info[c] % 8)),
         /* P */ info => Enumerable.Range(0, 5).All(col => Enumerable.Range(0, 5).Count(row => info[col + 5 * row] % 8 == 3) == 1) && Enumerable.Range(0, 5).All(row => Enumerable.Range(0, 5).Count(col => info[col + 5 * row] % 8 == 3) == 1),
         /* Q */ info => new[] { 0, 4, 12, 20, 24 }.Select(cell => info[cell] % 8).Distinct().Count() == 5,
         /* R */ info => Enumerable.Range(0, 25).All(cell => info[cell] % 8 != 0 || info[cell] / 8 == 2),
         /* S */ info => Enumerable.Range(0, 8).Count(fill => info.Count(s => s % 8 == fill) == 2) == 4,
-        /* T */info => Enumerable.Range(0, 25).All(cell => info[cell] % 8 != 6 || Orthogonal(cell).Any(c => info[c] % 8 == 6)),
+        /* T */ info => Enumerable.Range(0, 25).All(cell => info[cell] % 8 != 6 || Orthogonal(cell).Any(c => info[c] % 8 == 6)),
         /* U */ info => Enumerable.Range(0, 2).All(row => Enumerable.Range(0, 5).All(col => info[col + 5 * row] % 8 != 5)) || Enumerable.Range(3, 2).All(row => Enumerable.Range(0, 5).All(col => info[col + 5 * row] % 8 != 5)),
         /* V */ info => Enumerable.Range(0, 25).All(cell => cell / 5 == 2 || (cell / 5 < 2 ? info[cell] % 8 != 0 : info[cell] % 8 != 1)) || Enumerable.Range(0, 25).All(cell => cell / 5 == 2 || (cell / 5 < 2 ? info[cell] % 8 != 1 : info[cell] % 8 != 0)),
         /* W */ info => new[] { 6, 7, 8, 11, 12, 13, 16, 17, 18 }.All(cell => info[cell] % 8 != 2),
