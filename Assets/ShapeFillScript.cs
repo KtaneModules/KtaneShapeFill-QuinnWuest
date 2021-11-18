@@ -5,6 +5,7 @@ using System.Linq;
 using UnityEngine;
 using Rnd = UnityEngine.Random;
 using KModkit;
+using System.Text.RegularExpressions;
 
 public class ShapeFillScript : MonoBehaviour
 {
@@ -75,8 +76,6 @@ public class ShapeFillScript : MonoBehaviour
         _shapeRestrictions = Enumerable.Range(0, 8).ToArray().Shuffle();
         _fillRestrictions = Enumerable.Range(0, 8).ToArray().Shuffle();
 
-        bool[] shapeChecks = new bool[8];
-        bool[] fillChecks = new bool[8];
         for (int i = 0; i < ShapeFillObjs.Length; i++)
         {
         tryAgain2:
@@ -103,15 +102,15 @@ public class ShapeFillScript : MonoBehaviour
         _restrictions.Add(restrIx[_shapeRestrictions[1]][SerialNumber[0]]);
         var restr2 = restrIx[_shapeRestrictions[0]][SerialNumber[1]];
         while (_restrictions.Contains(restr2))
-            restr2 = (restr2 + 3) % 26;
+            restr2 = (restr2 + 3) % 13;
         _restrictions.Add(restr2);
         var restr3 = restrIx[_fillRestrictions[1] + 8][SerialNumber[2]];
         while (_restrictions.Contains(restr3))
-            restr3 = (restr3 + 3) % 26;
+            restr3 = ((restr3 + 3) % 13) + 13;
         _restrictions.Add(restr3);
         var restr4 = restrIx[_fillRestrictions[0] + 8][SerialNumber[3]];
         while (_restrictions.Contains(restr4))
-            restr4 = (restr4 + 3) % 26;
+            restr4 = ((restr4 + 3) % 13) + 13;
         _restrictions.Add(restr4);
         Debug.LogFormat("[Shape Fill #{0}] The restrictions in place are {1}", _moduleId, _restrictions.Select(r => (char)(r + 'A')).Join(", "));
         _restrictions.Add(26);
@@ -119,6 +118,7 @@ public class ShapeFillScript : MonoBehaviour
 
     private bool TogglePress()
     {
+        Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, transform);
         if (!_moduleSolved)
         {
             Debug.LogFormat("[Shape Fill #{0}] Toggle press.", _moduleId);
@@ -130,6 +130,7 @@ public class ShapeFillScript : MonoBehaviour
 
     private bool ResetPress()
     {
+        Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, transform);
         if (!_moduleSolved)
         {
             Debug.LogFormat("[Shape Fill #{0}] Reset press.", _moduleId);
@@ -147,6 +148,7 @@ public class ShapeFillScript : MonoBehaviour
     {
         return delegate ()
         {
+            Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, transform);
             if (!_moduleSolved)
             {
                 Light.GetComponent<MeshRenderer>().material = LightMats[3];
@@ -162,6 +164,7 @@ public class ShapeFillScript : MonoBehaviour
 
     private bool SubmitPress()
     {
+        Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, transform);
         if (!_moduleSolved)
         {
             Debug.LogFormat("[Shape Fill #{0}] Submit press.", _moduleId);
@@ -176,6 +179,7 @@ public class ShapeFillScript : MonoBehaviour
                 }
             }
             Debug.LogFormat("[Shape Fill #{0}] Module solved.", _moduleId);
+            Audio.PlaySoundAtTransform("Nokia", transform);
             Module.HandlePass();
             _moduleSolved = true;
             Light.GetComponent<MeshRenderer>().material = LightMats[1];
@@ -246,4 +250,66 @@ public class ShapeFillScript : MonoBehaviour
         /* Y */ info => Enumerable.Range(0, 25).Count(cell => info[cell] % 8 == 1) == Enumerable.Range(0, 25).Where(cell => info[cell] % 8 == 1).Select(cell => info[cell] / 8).Distinct().Count(),
         /* Z */ info => new[] { 5, 6, 7, 8, 9, 15, 16, 17, 18, 19 }.Select(cell => info[cell] % 8).Distinct().Count() == 8,
         /* extra restriction */ info => Enumerable.Range(0, 8).All(value => Enumerable.Range(0, 25).Count(cell => info[cell] / 8 == value) >= 2 && Enumerable.Range(0, 25).Count(cell => info[cell] % 8 == value) >= 2));
+
+#pragma warning disable 414
+    private const string TwitchHelpMessage = @"!{0} A1 C E [Place circle-empty at A1.] | Shapes are: [C]ircle, [D]iamond, [H]eart, [O]ctagon, [S]quare, sta[R], trape[Z]oid, [T]riangle. | Fills are: [C]ross, dia[G]onal, [D]ots, [E]mpty, [F]illed, [H]orizotal, [V]ertical, [X].";
+#pragma warning restore 414
+
+    private IEnumerator ProcessTwitchCommand(string command)
+    {
+        var m = Regex.Match(command, @"^\s*(?<COORDLET>[ABCDE])(?<COORDNUM>[12345])\s*(?<SHAPE>[CDHOSRZT])\s*(?<FILL>[CGDEFHVX])\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (m.Success)
+        {
+            yield return null;
+            var chordLet = m.Groups["COORDLET"].Value.ToUpperInvariant();
+            var chordNum = m.Groups["COORDNUM"].Value.ToUpperInvariant();
+            int val = chordLet[0] - 'A' + (chordNum[0] - '0' - 1) * 5;
+            //Debug.Log(val);
+
+            var shapeNames = "CDHOSRZT";
+            var fillNames = "CGDEFHVX";
+
+            var shape = m.Groups["SHAPE"].Value.ToUpperInvariant();
+            var fill = m.Groups["FILL"].Value.ToUpperInvariant();
+            var finalShape = shapeNames.IndexOf(shape);
+            var finalFill = fillNames.IndexOf(fill);
+            Debug.LogFormat(finalShape + ", " + finalFill);
+
+            while (CurrentShapeInfo[val] / 8 != finalShape)
+            {
+                if (_toggleIsFill)
+                {
+                    ToggleSel.OnInteract();
+                    yield return new WaitForSeconds(0.1f);
+                }
+                SquareSels[val].OnInteract();
+                yield return new WaitForSeconds(0.1f);
+            }
+            while (CurrentShapeInfo[val] % 8 != finalFill)
+            {
+                if (!_toggleIsFill)
+                {
+                    ToggleSel.OnInteract();
+                    yield return new WaitForSeconds(0.1f);
+                }
+                SquareSels[val].OnInteract();
+                yield return new WaitForSeconds(0.1f);
+            }
+        }
+        m = Regex.Match(command, @"^\s*submit\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (m.Success)
+        {
+            yield return null;
+            SubmitSel.OnInteract();
+            yield return new WaitForSeconds(0.1f);
+        }
+        m = Regex.Match(command, @"^\s*reset\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (m.Success)
+        {
+            yield return null;
+            ResetSel.OnInteract();
+            yield return new WaitForSeconds(0.1f);
+        }
+        yield break;
+    }
 }
