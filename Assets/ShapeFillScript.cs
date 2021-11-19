@@ -252,7 +252,7 @@ public class ShapeFillScript : MonoBehaviour
         /* extra restriction */ info => Enumerable.Range(0, 8).All(value => Enumerable.Range(0, 25).Count(cell => info[cell] / 8 == value) >= 2 && Enumerable.Range(0, 25).Count(cell => info[cell] % 8 == value) >= 2));
 
 #pragma warning disable 414
-    private const string TwitchHelpMessage = @"!{0} A1 C E [Place circle-empty at A1.] | Shapes are: [C]ircle, [D]iamond, [H]eart, [O]ctagon, [S]quare, sta[R], trape[Z]oid, [T]riangle. | Fills are: [C]ross, dia[G]onal, [D]ots, [E]mpty, [F]illed, [H]orizotal, [V]ertical, [X].";
+    private const string TwitchHelpMessage = @"!{0} A1 C E [Place circle-empty at A1.] | !{0} reset [Resets grid to initial state.] | !{0} submit [Submits current grid state.] | Shapes are: [C]ircle, [D]iamond, [H]eart, [O]ctagon, [S]quare, sta[R], trape[Z]oid, [T]riangle. | Fills are: [C]ross, dia[G]onal, [D]ots, [E]mpty, [F]illed, [H]orizotal, [V]ertical, [X].";
 #pragma warning restore 414
 
     private IEnumerator ProcessTwitchCommand(string command)
