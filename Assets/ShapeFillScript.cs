@@ -6,6 +6,7 @@ using UnityEngine;
 using Rnd = UnityEngine.Random;
 using KModkit;
 using System.Text.RegularExpressions;
+using System.Text;
 
 public class ShapeFillScript : MonoBehaviour
 {
@@ -46,6 +47,8 @@ public class ShapeFillScript : MonoBehaviour
         for (int i = 0; i < 25; i++)
             SquareObjs[i].SetActive(false);
         Module.OnActivate += Activate;
+        Debug.LogFormat("[Shape Fill #{0}] Shape abbreviations: [C]IRCLE, [D]IAMOND, [H]EART, [O]CTAGON, [S]QUARE, STA[R], TRAPE[Z]OID, [T]RIANGLE.", _moduleId);
+        Debug.LogFormat("[Shape Fill #{0}] Fill abbreviations: [C]ROSS, DIA[G]ONAL, [D]OTS, [E]MPTY, [F]ILL, [H]ORIZONTAL, [V]ERTICAL, [X].", _moduleId);
     }
 
     private void Activate()
@@ -377,7 +380,22 @@ public class ShapeFillScript : MonoBehaviour
                 SquareObjs[i * 5 + j].GetComponent<MeshRenderer>().material.mainTexture = ShapeTextures[_displayIxs[i][j]];
         _correctShapeFillPress[0] = _displayIxs[_correctIxs[0]][_correctIxs[1]] / 8;
         _correctShapeFillPress[1] = _displayIxs[_correctIxs[0]][_correctIxs[1]] % 8;
-        Debug.LogFormat("[Shape Fill #{0}] Shape/fill: {1} {2}", _moduleId, _shapeNames[_currentShapeFillConfig[0]], _fillNames[_currentShapeFillConfig[1]]);
+        Debug.LogFormat("[Shape Fill #{0}] Stage {3} shape and fill: {1} {2}", _moduleId, _shapeNames[_currentShapeFillConfig[0]], _fillNames[_currentShapeFillConfig[1]], _stage + 1);
+        var s = "CDHOSRZT";
+        var f = "CGDEFHVX";
+        Debug.LogFormat("[Shape Fill #{0}] Grid:", _moduleId);
+        for (int i = 0; i < 5; i++)
+        {
+            var str = "";
+            for (int j = 0; j < 5; j++)
+            {
+                str += (s[_displayIxs[i][j] / 8]);
+                str += (f[_displayIxs[i][j] % 8]);
+                if (j != 4)
+                    str += (" ");
+            }
+            Debug.LogFormat("[Shape Fill #{0}] {1}", _moduleId, str);
+        }
         Debug.LogFormat("[Shape Fill #{0}] Correct cell to press: {1}", _moduleId, ConvToCoord(_correctIxs[0] * 5 + _correctIxs[1]));
         Debug.LogFormat("<Shape Fill #{0}> Attempts to generate a grid at stage {1}: {2}", _moduleId, _stage + 1, attempts);
     }
