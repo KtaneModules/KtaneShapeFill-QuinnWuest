@@ -14,302 +14,459 @@ public class ShapeFillScript : MonoBehaviour
     public KMAudio Audio;
 
     public KMSelectable[] SquareSels;
-    public KMSelectable SubmitSel;
-    public KMSelectable ToggleSel;
-    public KMSelectable ResetSel;
-    public GameObject Light;
-    public Material[] LightMats;
     public Texture[] ShapeTextures;
-
-    public TextMesh ToggleText;
-    public GameObject[] ShapeFillObjs;
-    public GameObject SubmitShape;
-    public GameObject ToggleFill;
+    public GameObject[] SquareObjs;
+    public GameObject[] SolveTextObj;
+    public TextMesh ScreenText;
 
     private int _moduleId;
     private static int _moduleIdCounter = 1;
     private bool _moduleSolved;
 
-    private int[] InitialShapeInfo = new int[25];
-    private int[] CurrentShapeInfo = new int[25];
-    private bool _toggleIsFill;
-
-    private readonly string[] SHAPENAMES = { "Circle", "Diamond", "Heart", "Octagon", "Square", "Star", "Trapezoid", "Triangle" };
-    private readonly string[] FILLNAMES = { "Cross", "Diagonal", "Dots", "Empty", "Fill", "Horizontal", "Vertical", "X" };
-
-    private readonly List<int> _restrictions = new List<int>();
-    private int[] _shapeRestrictions;
-    private int[] _fillRestrictions;
-    private int[][] restrIx = new int[16][]
+    private static readonly string[] _shapeNames = { "Circle", "Diamond", "Heart", "Octagon", "Square", "Star", "Trapezoid", "Triangle" };
+    private static readonly string[] _fillNames = { "Cross", "Diagonal", "Dots", "Empty", "Fill", "Horizontal", "Vertical", "X" };
+    private int[][][] _gridIxs = new int[2][][]
     {
-        new int[4] {9, 0, 2, 3},
-        new int[4] {12, 7, 4, 6},
-        new int[4] {8, 5, 10, 1},
-        new int[4] {11, 4, 12, 5},
-        new int[4] {9, 2, 6, 0},
-        new int[4] {11, 8, 1, 3},
-        new int[4] {7, 10, 12, 3},
-        new int[4] {1, 9, 5, 6},
-
-        new int[4] {23, 24, 15, 13},
-        new int[4] {16, 14, 25, 18},
-        new int[4] {19, 17, 21, 22},
-        new int[4] {20, 19, 16, 25},
-        new int[4] {24, 20, 18, 21},
-        new int[4] {22, 14, 13, 23},
-        new int[4] {17, 15, 16, 22},
-        new int[4] {25, 18, 13, 24}
+        new int[5][] { new int[5], new int[5], new int[5], new int[5], new int[5] },
+        new int[5][] { new int[5], new int[5], new int[5], new int[5], new int[5] }
     };
+
+    private int _stage = 0;
+    private int[] _currentShapeFillConfig = new int[2];
+    private int[] _correctIxs = new int[2];
+    private int[] _correctShapeFillPress = new int[2];
+    private int[][] _displayIxs = new int[5][] { new int[5], new int[5], new int[5], new int[5], new int[5] };
+    private bool _isAnimating;
 
     private void Start()
     {
         _moduleId = _moduleIdCounter++;
-        Light.GetComponent<MeshRenderer>().material = LightMats[0];
-
-        for (int i = 0; i < SquareSels.Length; i++)
-            SquareSels[i].OnInteract += SquarePress(i);
-        SubmitSel.OnInteract += SubmitPress;
-        ToggleSel.OnInteract += TogglePress;
-        ResetSel.OnInteract += ResetPress;
-
-        //Deciding the shapes and fills
-        _shapeRestrictions = Enumerable.Range(0, 8).ToArray().Shuffle();
-        _fillRestrictions = Enumerable.Range(0, 8).ToArray().Shuffle();
-
-        for (int i = 0; i < ShapeFillObjs.Length; i++)
-        {
-        tryAgain2:
-            int rnd = Rnd.Range(0, ShapeTextures.Length);
-            if (rnd / 8 == _shapeRestrictions[0])
-                goto tryAgain2;
-            if (rnd % 8 == _fillRestrictions[0])
-                goto tryAgain2;
-            ShapeFillObjs[i].GetComponent<MeshRenderer>().material.mainTexture = ShapeTextures[rnd];
-            InitialShapeInfo[i] = rnd;
-            CurrentShapeInfo[i] = rnd;
-        }
-        Debug.LogFormat("[Shape Fill #{0}] The missing shape is {1}.", _moduleId, SHAPENAMES[_shapeRestrictions[0]]);
-        Debug.LogFormat("[Shape Fill #{0}] The missing fill is {1}.", _moduleId, FILLNAMES[_fillRestrictions[0]]);
-
-        ToggleFill.GetComponent<MeshRenderer>().material.mainTexture = ShapeTextures[_fillRestrictions[1]];
-        SubmitShape.GetComponent<MeshRenderer>().material.mainTexture = ShapeTextures[_shapeRestrictions[1] * 8 + 3];
-        Debug.LogFormat("[Shape Fill #{0}] The shape on the submit button is {1}.", _moduleId, SHAPENAMES[_shapeRestrictions[1]]);
-        Debug.LogFormat("[Shape Fill #{0}] The fill on the toggle button is {1}.", _moduleId, FILLNAMES[_fillRestrictions[1]]);
-
-        var str = "0123456789...ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        var SerialNumber = BombInfo.GetSerialNumber().Take(4).Select(ch => str.IndexOf(ch) % 4).ToArray();
-
-        _restrictions.Add(restrIx[_shapeRestrictions[1]][SerialNumber[0]]);
-        var restr2 = restrIx[_shapeRestrictions[0]][SerialNumber[1]];
-        while (_restrictions.Contains(restr2))
-            restr2 = (restr2 + 3) % 13;
-        _restrictions.Add(restr2);
-        var restr3 = restrIx[_fillRestrictions[1] + 8][SerialNumber[2]];
-        while (_restrictions.Contains(restr3))
-            restr3 = ((restr3 + 3) % 13) + 13;
-        _restrictions.Add(restr3);
-        var restr4 = restrIx[_fillRestrictions[0] + 8][SerialNumber[3]];
-        while (_restrictions.Contains(restr4))
-            restr4 = ((restr4 + 3) % 13) + 13;
-        _restrictions.Add(restr4);
-        Debug.LogFormat("[Shape Fill #{0}] The restrictions in place are {1}", _moduleId, _restrictions.Select(r => (char)(r + 'A')).Join(", "));
-        _restrictions.Add(26);
+        for (int btn = 0; btn < SquareSels.Length; btn++)
+            SquareSels[btn].OnInteract += SquarePress(btn);
+        for (int i = 0; i < 25; i++)
+            SquareObjs[i].SetActive(false);
+        Module.OnActivate += Activate;
     }
 
-    private bool TogglePress()
+    private void Activate()
     {
-        Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, transform);
-        if (!_moduleSolved)
-        {
-            Debug.LogFormat("[Shape Fill #{0}] Toggle press.", _moduleId);
-            _toggleIsFill = !_toggleIsFill;
-            ToggleText.text = _toggleIsFill ? "FILL" : "SHAPE";
-        }
-        return false;
+        StartCoroutine(FadeAnimation(false, true));
     }
 
-    private bool ResetPress()
-    {
-        Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, transform);
-        if (!_moduleSolved)
-        {
-            Debug.LogFormat("[Shape Fill #{0}] Reset press.", _moduleId);
-            for (int i = 0; i < 25; i++)
-            {
-                CurrentShapeInfo[i] = InitialShapeInfo[i];
-                ShapeFillObjs[i].GetComponent<MeshRenderer>().material.mainTexture = ShapeTextures[InitialShapeInfo[i]];
-            }
-            Light.GetComponent<MeshRenderer>().material = LightMats[0];
-        }
-        return false;
-    }
-
-    private KMSelectable.OnInteractHandler SquarePress(int shape)
+    private KMSelectable.OnInteractHandler SquarePress(int btn)
     {
         return delegate ()
         {
+            SquareSels[btn].AddInteractionPunch(0.5f);
             Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, transform);
-            if (!_moduleSolved)
+            if (_isAnimating || _moduleSolved)
+                return false;
+            if (btn == _correctIxs[0] * 5 + _correctIxs[1])
             {
-                Light.GetComponent<MeshRenderer>().material = LightMats[3];
-                if (_toggleIsFill)
-                    CurrentShapeInfo[shape] = ((CurrentShapeInfo[shape] / 8) * 8) + (((CurrentShapeInfo[shape] % 8) + 1) % 8);
-                if (!_toggleIsFill)
-                    CurrentShapeInfo[shape] = (CurrentShapeInfo[shape] + 8) % 64;
-                ShapeFillObjs[shape].GetComponent<MeshRenderer>().material.mainTexture = ShapeTextures[CurrentShapeInfo[shape]];
+                Debug.LogFormat("[Shape Fill #{0}] Pressed correct cell at {1}. Moving to stage {2}.", _moduleId, ConvToCoord(btn), _stage + 2);
+                StartCoroutine(FadeAnimation(false));
+            }
+            else
+            {
+                Module.HandleStrike();
+                Debug.LogFormat("[Shape Fill #{0}] Incorrectly pressed cell at {1}. Strike. Resetting...", _moduleId, ConvToCoord(btn));
+                StartCoroutine(FadeAnimation(true));
             }
             return false;
         };
     }
 
-    private bool SubmitPress()
+    private string ConvToCoord(int cell)
     {
-        Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, transform);
-        if (!_moduleSolved)
+        return "ABCDE"[cell % 5].ToString() + "12345"[cell / 5].ToString();
+    }
+
+    private void GenerateStage()
+    {
+        int attempts = 0;
+        generate:
+        attempts++;
+        for (int i = 0; i < 5; i++)
         {
-            Debug.LogFormat("[Shape Fill #{0}] Submit press.", _moduleId);
-            for (var restrIx = 0; restrIx < _restrictions.Count; restrIx++)
+            for (int j = 0; j < 5; j++)
             {
-                if (!_restDelegates[_restrictions[restrIx]](CurrentShapeInfo))
+                var rnd = Rnd.Range(0, ShapeTextures.Length);
+                _gridIxs[0][i][j] = rnd / 8;
+                _gridIxs[1][j][i] = rnd % 8;
+                _displayIxs[i][j] = rnd;
+            }
+        }
+        var usedShapes = new List<int>();
+        var usedFills = new List<int>();
+        for (int i = 0; i < 5; i++)
+        {
+            for (int j = 0; j < 5; j++)
+            {
+                if (!usedShapes.Contains(_gridIxs[0][i][j]))
+                    usedShapes.Add(_gridIxs[0][i][j]);
+                if (!usedFills.Contains(_gridIxs[1][i][j]))
+                    usedFills.Add(_gridIxs[1][i][j]);
+            }
+        }
+        if (((usedShapes.Count != 7 || usedFills.Count != 7) && _stage == 0) || ((usedShapes.Count != 8 || usedFills.Count != 8) && _stage != 0))
+            goto generate;
+        if (_stage == 0)
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                if (!usedShapes.Contains(i))
+                    _currentShapeFillConfig[0] = i;
+                if (!usedFills.Contains(i))
+                    _currentShapeFillConfig[1] = i;
+            }
+        }
+        else
+        {
+            _currentShapeFillConfig[0] = _correctShapeFillPress[0];
+            _currentShapeFillConfig[1] = _correctShapeFillPress[1];
+        }
+        for (int sfc = 0; sfc < 2; sfc++)
+        {
+            var checkList = new List<int>();
+            for (int ixFirst = 0; ixFirst < 5; ixFirst++)
+            {
+                if (_currentShapeFillConfig[sfc] == 0)
                 {
-                    Debug.LogFormat("[Shape Fill #{0}] Restriction #{1} ({2}) is violated.", _moduleId, restrIx + 1, _restrictions[restrIx] == 26 ? "default" : ((char)(_restrictions[restrIx] + 'A')).ToString());
-                    Module.HandleStrike();
-                    Light.GetComponent<MeshRenderer>().material = LightMats[2];
-                    return false;
+                    if (_stage == 0)
+                    {
+                        if (!_gridIxs[sfc][ixFirst].Contains(4))
+                            checkList.Add(ixFirst);
+                    }
+                    else if (_stage == 1)
+                    {
+                        var c = new List<int>();
+                        for (int ixSecond = 0; ixSecond < 5; ixSecond++)
+                            if (!c.Contains(_gridIxs[sfc][ixFirst][ixSecond]))
+                                c.Add(_gridIxs[sfc][ixFirst][ixSecond]);
+                        if (c.Count == 3)
+                            checkList.Add(ixFirst);
+                    }
+                    else
+                    {
+                        var c = new List<int>();
+                        for (int ixSecond = 0; ixSecond < 5; ixSecond++)
+                        {
+                            if (!c.Contains(_gridIxs[sfc][(ixFirst + 1) % 5][ixSecond]))
+                                c.Add(_gridIxs[sfc][(ixFirst + 1) % 5][ixSecond]);
+                            if (!c.Contains(_gridIxs[sfc][(ixFirst + 4) % 5][ixSecond]))
+                                c.Add(_gridIxs[sfc][(ixFirst + 4) % 5][ixSecond]);
+                        }
+                        if (c.Count == 4 || c.Count == 6)
+                            checkList.Add(ixFirst);
+                    }
+                }
+                else if (_currentShapeFillConfig[sfc] == 1)
+                {
+                    if (_stage == 0)
+                    {
+                        int c = 0;
+                        for (int ixSecond = 0; ixSecond < 5; ixSecond++)
+                            if (_gridIxs[sfc][ixFirst][ixSecond] == 2)
+                                c++;
+                        if (c == 1)
+                            checkList.Add(ixFirst);
+                    }
+                    else if (_stage == 1)
+                    {
+                        if ((_gridIxs[sfc][ixFirst].Contains(1) && !_gridIxs[sfc][ixFirst].Contains(3)) || (!_gridIxs[sfc][ixFirst].Contains(1) && _gridIxs[sfc][ixFirst].Contains(3)))
+                            checkList.Add(ixFirst);
+                    }
+                    else
+                    {
+                        if (_gridIxs[sfc][ixFirst].Distinct().Count() == _gridIxs[sfc][(ixFirst + 4) % 5].Distinct().Count())
+                            checkList.Add(ixFirst);
+                    }
+                }
+                else if (_currentShapeFillConfig[sfc] == 2)
+                {
+                    if (_stage == 0)
+                    {
+                        int c = 0;
+                        for (int ixSecond = 0; ixSecond < 5; ixSecond++)
+                            if (_gridIxs[sfc][ixFirst][ixSecond] == 6)
+                                c++;
+                        if (c == 2)
+                            checkList.Add(ixFirst);
+                    }
+                    else if (_stage == 1)
+                    {
+                        int c1 = 0;
+                        int c2 = 0;
+                        for (int ixSecond = 0; ixSecond < 5; ixSecond++)
+                        {
+                            if (_gridIxs[sfc][ixFirst][ixSecond] == 1)
+                                c1++;
+                            if (_gridIxs[sfc][ixFirst][ixSecond] == 4)
+                                c2++;
+                        }
+                        if (c1 == c2)
+                            checkList.Add(ixFirst);
+                    }
+                    else
+                    {
+                        var c = new List<int>();
+                        for (int ixSecond = 0; ixSecond < 5; ixSecond++)
+                        {
+                            if (!c.Contains(_gridIxs[sfc][ixFirst][ixSecond]))
+                                c.Add(_gridIxs[sfc][ixFirst][ixSecond]);
+                            if (!c.Contains(_gridIxs[sfc][(ixFirst + 2) % 5][ixSecond]))
+                                c.Add(_gridIxs[sfc][(ixFirst + 2) % 5][ixSecond]);
+                        }
+                        if (c.Count == 7)
+                            checkList.Add(ixFirst);
+                    }
+                }
+                else if (_currentShapeFillConfig[sfc] == 3)
+                {
+                    if (_stage == 0)
+                    {
+                        if (!_gridIxs[sfc][ixFirst].Contains(5) && !_gridIxs[sfc][ixFirst].Contains(6))
+                            checkList.Add(ixFirst);
+                    }
+                    else if (_stage == 1)
+                    {
+                        int c = 0;
+                        if (_gridIxs[sfc][ixFirst].Contains(2))
+                            c++;
+                        if (_gridIxs[sfc][ixFirst].Contains(7))
+                            c++;
+                        if (c != 1)
+                            checkList.Add(ixFirst);
+                    }
+                    else
+                    {
+                        int c = 0;
+                        if (_gridIxs[sfc][ixFirst].Contains(0))
+                            c++;
+                        if (_gridIxs[sfc][ixFirst].Contains(4))
+                            c++;
+                        if (_gridIxs[sfc][ixFirst].Contains(1))
+                            c++;
+                        if (c == 2)
+                            checkList.Add(ixFirst);
+                    }
+                }
+                else if (_currentShapeFillConfig[sfc] == 4)
+                {
+                    if (_stage == 0)
+                    {
+                        if (_gridIxs[sfc][ixFirst].Contains(1) && _gridIxs[sfc][ixFirst].Contains(7))
+                            checkList.Add(ixFirst);
+                    }
+                    else if (_stage == 1)
+                    {
+                        var c = new List<int>();
+                        for (int ixSecond = 0; ixSecond < 5; ixSecond++)
+                        {
+                            if (!c.Contains(_gridIxs[sfc][ixFirst][ixSecond]))
+                                c.Add(_gridIxs[sfc][ixFirst][ixSecond]);
+                        }
+                        if (c.Count % 2 == 0)
+                            checkList.Add(ixFirst);
+                    }
+                    else
+                    {
+                        var c1 = new List<int>();
+                        var c2 = new List<int>();
+                        for (int ixSecond = 0; ixSecond < 5; ixSecond++)
+                        {
+                            if (!c1.Contains(_gridIxs[sfc][ixFirst][ixSecond]))
+                                c1.Add(_gridIxs[sfc][ixFirst][ixSecond]);
+                            if (!c2.Contains(_gridIxs[sfc][(ixFirst + 2) % 5][ixSecond]))
+                                c2.Add(_gridIxs[sfc][(ixFirst + 2) % 5][ixSecond]);
+                        }
+                        if (c1.Count == c2.Count + 2)
+                            checkList.Add(ixFirst);
+                    }
+                }
+                else if (_currentShapeFillConfig[sfc] == 5)
+                {
+                    if (_stage == 0)
+                    {
+                        int c = 0;
+                        for (int ixSecond = 0; ixSecond < 5; ixSecond++)
+                            if (_gridIxs[sfc][ixFirst][ixSecond] == 0)
+                                c++;
+                        if (c == 1)
+                            checkList.Add(ixFirst);
+                    }
+                    else if (_stage == 1)
+                    {
+                        if (_gridIxs[sfc][ixFirst].Distinct().Count() == 5)
+                            checkList.Add(ixFirst);
+                    }
+                    else
+                    {
+                        int c = 0;
+                        for (int ixSecond = 0; ixSecond < 5; ixSecond++)
+                            if (_gridIxs[sfc][ixFirst][ixSecond] == 1 || _gridIxs[sfc][ixFirst][ixSecond] == 4 || _gridIxs[sfc][ixFirst][ixSecond] == 6)
+                                c++;
+                        if (c == 3 || c == 5)
+                            checkList.Add(ixFirst);
+                    }
+                }
+                else if (_currentShapeFillConfig[sfc] == 6)
+                {
+                    if (_stage == 0)
+                    {
+                        if (!_gridIxs[sfc][ixFirst].Contains(3))
+                            checkList.Add(ixFirst);
+                    }
+                    else if (_stage == 1)
+                    {
+                        if ((_gridIxs[sfc][ixFirst].Contains(0) && _gridIxs[sfc][ixFirst].Contains(3)) || (!_gridIxs[sfc][ixFirst].Contains(0) && !_gridIxs[sfc][ixFirst].Contains(3)))
+                            checkList.Add(ixFirst);
+                    }
+                    else
+                    {
+                        var c = new List<int>();
+                        for (int ixSecond = 0; ixSecond < 5; ixSecond++)
+                        {
+                            if (!c.Contains(_gridIxs[sfc][ixFirst][ixSecond]))
+                                c.Add(_gridIxs[sfc][ixFirst][ixSecond]);
+                            if (!c.Contains(_gridIxs[sfc][(ixFirst + 3) % 5][ixSecond]))
+                                c.Add(_gridIxs[sfc][(ixFirst + 3) % 5][ixSecond]);
+                        }
+                        if (c.Count == 6)
+                            checkList.Add(ixFirst);
+                    }
+                }
+                else
+                {
+                    if (_stage == 0)
+                    {
+                        int c = 0;
+                        for (int ixSecond = 0; ixSecond < 5; ixSecond++)
+                            if (_gridIxs[sfc][ixFirst][ixSecond] == 4)
+                                c++;
+                        if (c == 2)
+                            checkList.Add(ixFirst);
+                    }
+                    else if (_stage == 1)
+                    {
+                        if ((_gridIxs[sfc][ixFirst].Contains(1) && _gridIxs[sfc][ixFirst].Contains(7)) || (!_gridIxs[sfc][ixFirst].Contains(1) && !_gridIxs[sfc][ixFirst].Contains(7)))
+                            checkList.Add(ixFirst);
+                    }
+                    else
+                    {
+                        var c1 = new List<int>();
+                        var c2 = new List<int>();
+                        for (int ixSecond = 0; ixSecond < 5; ixSecond++)
+                        {
+                            if (!c1.Contains(_gridIxs[sfc][(ixFirst + 2) % 5][ixSecond]))
+                                c1.Add(_gridIxs[sfc][(ixFirst + 2) % 5][ixSecond]);
+                            if (!c2.Contains(_gridIxs[sfc][(ixFirst + 3) % 5][ixSecond]))
+                                c2.Add(_gridIxs[sfc][(ixFirst + 3) % 5][ixSecond]);
+                        }
+                        if (c1.Count == c2.Count)
+                            checkList.Add(ixFirst);
+                    }
                 }
             }
-            Debug.LogFormat("[Shape Fill #{0}] Module solved.", _moduleId);
-            Audio.PlaySoundAtTransform("Nokia", transform);
-            Module.HandlePass();
-            _moduleSolved = true;
-            Light.GetComponent<MeshRenderer>().material = LightMats[1];
+            if (checkList.Count != 1)
+                goto generate;
+            _correctIxs[sfc] = checkList[0];
         }
-        return false;
+        for (int i = 0; i < 5; i++)
+            for (int j = 0; j < 5; j++)
+                SquareObjs[i * 5 + j].GetComponent<MeshRenderer>().material.mainTexture = ShapeTextures[_displayIxs[i][j]];
+        _correctShapeFillPress[0] = _displayIxs[_correctIxs[0]][_correctIxs[1]] / 8;
+        _correctShapeFillPress[1] = _displayIxs[_correctIxs[0]][_correctIxs[1]] % 8;
+        Debug.LogFormat("[Shape Fill #{0}] Shape/fill: {1} {2}", _moduleId, _shapeNames[_currentShapeFillConfig[0]], _fillNames[_currentShapeFillConfig[1]]);
+        Debug.LogFormat("[Shape Fill #{0}] Correct cell to press: {1}", _moduleId, ConvToCoord(_correctIxs[0] * 5 + _correctIxs[1]));
+        Debug.LogFormat("<Shape Fill #{0}> Attempts to generate a grid at stage {1}: {2}", _moduleId, _stage + 1, attempts);
     }
 
-    private static T[] newArray<T>(params T[] array) { return array; }
-
-    private const int gridWidth = 5;
-    private const int gridHeight = 5;
-
-    /// <summary>Returns the set of cells adjacent to the specified cell (including diagonals).</summary>
-    private static IEnumerable<int> Adjacent(int cell)
+    private IEnumerator FadeAnimation(bool isStrike, bool isActivate = false)
     {
-        var x = cell % gridWidth;
-        var y = cell / gridHeight;
-        for (var xx = x - 1; xx <= x + 1; xx++)
-            if (xx >= 0 && xx < gridWidth)
-                for (var yy = y - 1; yy <= y + 1; yy++)
-                    if (yy >= 0 && yy < gridHeight && (xx != x || yy != y))
-                        yield return xx + gridWidth * yy;
+        _isAnimating = true;
+        if (!isActivate)
+        {
+            for (int i = 0; i < 25; i++)
+            {
+                SquareObjs[i].SetActive(false);
+                yield return new WaitForSeconds(0.03f);
+            }
+            if (!isStrike)
+                _stage++;
+            else
+                _stage = 0;
+        }
+        if (_stage == 3)
+        {
+            for (int i = 0; i < 25; i++)
+                SquareObjs[i].GetComponent<MeshRenderer>().material.mainTexture = ShapeTextures[Rnd.Range(0, ShapeTextures.Length)];
+            StartCoroutine(SolveAnimation());
+            yield break;
+        }
+        GenerateStage();
+        for (int i = 0; i < 25; i++)
+        {
+            SquareObjs[i].SetActive(true);
+            yield return new WaitForSeconds(0.03f);
+        }
+        var stageTxts = new string[] { "stage 1", "stage 2", "stage 3" };
+        for (int i = 0; i <= stageTxts[_stage].Length; i++)
+        {
+            ScreenText.text = stageTxts[_stage].Substring(0, i);
+            yield return new WaitForSeconds(0.05f);
+        }
+        _isAnimating = false;
     }
 
-    /// <summary>Returns the set of cells orthogonally adjacent to the specified cell (no diagonals).</summary>
-    private static IEnumerable<int> Orthogonal(int cell)
+    private IEnumerator SolveAnimation()
     {
-        var x = cell % gridWidth;
-        var y = cell / gridHeight;
-        for (var xx = x - 1; xx <= x + 1; xx++)
-            if (xx >= 0 && xx < gridWidth)
-                for (var yy = y - 1; yy <= y + 1; yy++)
-                    if (yy >= 0 && yy < gridHeight && (xx == x || yy == y) && (xx != x || yy != y))
-                        yield return xx + gridWidth * yy;
+        Audio.PlaySoundAtTransform("Nokia", transform);
+        _moduleSolved = true;
+        var youDidIt = new int[] { 6, 7, 8, 11, 12, 13, 16, 17, 18 };
+        var textIxs = new int[] { 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 0, 3, 4, 5, 0, 0, 6, 7, 8, 0, 0, 0, 0, 0, 0 };
+        for (int i = 0; i < 25; i++)
+        {
+            if (!youDidIt.Contains(i))
+                SquareObjs[i].SetActive(true);
+            else
+                SolveTextObj[textIxs[i]].SetActive(true);
+            yield return new WaitForSeconds(0.03f);
+        }
+        for (int i = 0; i <= "solved".Length; i++)
+        {
+            ScreenText.text = "solved".Substring(0, i);
+            yield return new WaitForSeconds(0.05f);
+        }
+        Module.HandlePass();
     }
 
-    /// <summary>Returns the set of cells orthogonally adjacent to the specified cell (no diagonals).</summary>
-    private static IEnumerable<int> Diagonal(int cell)
-    {
-        return Adjacent(cell).Except(Orthogonal(cell));
-    }
-
-    private static readonly Func<int[], bool>[] _restDelegates = newArray<Func<int[], bool>>(
-        /* A */ info => new[] { 6, 7, 8, 11, 12, 13, 16, 17, 18 }.All(cell => info[cell] / 8 != 6),
-        /* B */ info => Enumerable.Range(0, 8).Count(shape => info.Count(s => s / 8 == shape) == 2) == 4,
-        /* C */ info => Enumerable.Range(0, 25).All(cell => info[cell] / 8 != 7 || Orthogonal(cell).Any(c => info[c] / 8 == 7)),
-        /* D */ info => new[] { 1, 3, 6, 8, 11, 13, 16, 18, 21, 23 }.Select(cell => info[cell] / 8).Distinct().Count() == 8,
-        /* E */ info => !Enumerable.Range(0, 25).Any(cell => Diagonal(cell).Any(c => info[cell] / 8 == info[c] / 8)),
-        /* F */ info => Enumerable.Range(0, 2).All(col => Enumerable.Range(0, 5).All(row => info[col + 5 * row] / 8 != 3)) || Enumerable.Range(3, 2).All(col => Enumerable.Range(0, 5).All(row => info[col + 5 * row] / 8 != 3)),
-        /* G */ info => Enumerable.Range(0, 5).All(col => Enumerable.Range(0, 5).Count(row => info[col + 5 * row] / 8 == 4) == 1) && Enumerable.Range(0, 5).All(row => Enumerable.Range(0, 5).Count(col => info[col + 5 * row] / 8 == 4) == 1),
-        /* H */ info => Enumerable.Range(0, 25).Count(cell => info[cell] / 8 == 1) == Enumerable.Range(0, 25).Where(cell => info[cell] / 8 == 1).Select(cell => info[cell] % 8).Distinct().Count(),
-        /* I */ info => Enumerable.Range(0, 25).All(cell => cell % 5 == 2 || (cell % 5 < 2 ? info[cell] / 8 != 2 : info[cell] / 8 != 1)) || Enumerable.Range(0, 25).All(cell => cell % 5 == 2 || (cell % 5 < 2 ? info[cell] / 8 != 1 : info[cell] / 8 != 2)),
-        /* J */ info => new[] { 0, 4, 12, 20, 24 }.Select(cell => info[cell] / 8).Distinct().Count() == 5,
-        /* K */ info => new[] { 0, 1, 2, 3, 4, 5, 9, 10, 14, 15, 19, 20, 21, 22, 23, 24 }.All(cell => info[cell] / 8 != 0),
-        /* L */ info => Enumerable.Range(0, 25).All(cell => info[cell] / 8 != 2 || info[cell] % 8 == 0),
-        /* M */ info => Enumerable.Range(0, 5).Count(col => Enumerable.Range(0, 5).Any(row => info[col + 5 * row] / 8 == 5)) <= 1,
-        /* N */ info => Enumerable.Range(0, 5).Count(row => Enumerable.Range(0, 5).Any(col => info[col + 5 * row] % 8 == 7)) <= 1,
-        /* O */ info => !Enumerable.Range(0, 25).Any(cell => Diagonal(cell).Any(c => info[cell] % 8 == info[c] % 8)),
-        /* P */ info => Enumerable.Range(0, 5).All(col => Enumerable.Range(0, 5).Count(row => info[col + 5 * row] % 8 == 3) == 1) && Enumerable.Range(0, 5).All(row => Enumerable.Range(0, 5).Count(col => info[col + 5 * row] % 8 == 3) == 1),
-        /* Q */ info => new[] { 0, 4, 12, 20, 24 }.Select(cell => info[cell] % 8).Distinct().Count() == 5,
-        /* R */ info => Enumerable.Range(0, 25).All(cell => info[cell] % 8 != 0 || info[cell] / 8 == 2),
-        /* S */ info => Enumerable.Range(0, 8).Count(fill => info.Count(s => s % 8 == fill) == 2) == 4,
-        /* T */ info => Enumerable.Range(0, 25).All(cell => info[cell] % 8 != 6 || Orthogonal(cell).Any(c => info[c] % 8 == 6)),
-        /* U */ info => Enumerable.Range(0, 2).All(row => Enumerable.Range(0, 5).All(col => info[col + 5 * row] % 8 != 5)) || Enumerable.Range(3, 2).All(row => Enumerable.Range(0, 5).All(col => info[col + 5 * row] % 8 != 5)),
-        /* V */ info => Enumerable.Range(0, 25).All(cell => cell / 5 == 2 || (cell / 5 < 2 ? info[cell] % 8 != 0 : info[cell] % 8 != 1)) || Enumerable.Range(0, 25).All(cell => cell / 5 == 2 || (cell / 5 < 2 ? info[cell] % 8 != 1 : info[cell] % 8 != 0)),
-        /* W */ info => new[] { 6, 7, 8, 11, 12, 13, 16, 17, 18 }.All(cell => info[cell] % 8 != 2),
-        /* X */ info => new[] { 0, 1, 2, 3, 4, 5, 9, 10, 14, 15, 19, 20, 21, 22, 23, 24 }.All(cell => info[cell] % 8 != 4),
-        /* Y */ info => Enumerable.Range(0, 25).Count(cell => info[cell] % 8 == 1) == Enumerable.Range(0, 25).Where(cell => info[cell] % 8 == 1).Select(cell => info[cell] / 8).Distinct().Count(),
-        /* Z */ info => new[] { 5, 6, 7, 8, 9, 15, 16, 17, 18, 19 }.Select(cell => info[cell] % 8).Distinct().Count() == 8,
-        /* extra restriction */ info => Enumerable.Range(0, 8).All(value => Enumerable.Range(0, 25).Count(cell => info[cell] / 8 == value) >= 2 && Enumerable.Range(0, 25).Count(cell => info[cell] % 8 == value) >= 2));
-
-#pragma warning disable 414
-    private const string TwitchHelpMessage = @"!{0} A1 C E [Place circle-empty at A1.] | !{0} reset [Resets grid to initial state.] | !{0} submit [Submits current grid state.] | Shapes are: [C]ircle, [D]iamond, [H]eart, [O]ctagon, [S]quare, sta[R], trape[Z]oid, [T]riangle. | Fills are: [C]ross, dia[G]onal, [D]ots, [E]mpty, [F]illed, [H]orizotal, [V]ertical, [X].";
-#pragma warning restore 414
+#pragma warning disable 0414
+    private readonly string TwitchHelpMessage = "!{0} press C3 [Press cell at column C, row 3. Columns are labelled A-E from left to right. Rows are labelled 1-5 from top to bottom. 'press' is optional.]";
+#pragma warning restore 0414
 
     private IEnumerator ProcessTwitchCommand(string command)
     {
-        var m = Regex.Match(command, @"^\s*(?<COORDLET>[ABCDE])(?<COORDNUM>[12345])\s*(?<SHAPE>[CDHOSRZT])\s*(?<FILL>[CGDEFHVX])\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-        if (m.Success)
-        {
+        var m = Regex.Match(command, @"^\s*(press\s+)?([A-E])([1-5])\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (!m.Success)
+            yield break;
+        yield return null;
+        yield return "strike";
+        yield return "solve";
+        while (_isAnimating)
             yield return null;
-            var chordLet = m.Groups["COORDLET"].Value.ToUpperInvariant();
-            var chordNum = m.Groups["COORDNUM"].Value.ToUpperInvariant();
-            int val = chordLet[0] - 'A' + (chordNum[0] - '0' - 1) * 5;
-            //Debug.Log(val);
+        SquareSels[m.Groups[2].Value.ToUpperInvariant()[0] - 'A' + (m.Groups[3].Value[0] - '0' - 1) * 5].OnInteract();
+    }
 
-            var shapeNames = "CDHOSRZT";
-            var fillNames = "CGDEFHVX";
-
-            var shape = m.Groups["SHAPE"].Value.ToUpperInvariant();
-            var fill = m.Groups["FILL"].Value.ToUpperInvariant();
-            var finalShape = shapeNames.IndexOf(shape);
-            var finalFill = fillNames.IndexOf(fill);
-            Debug.LogFormat(finalShape + ", " + finalFill);
-
-            while (CurrentShapeInfo[val] / 8 != finalShape)
-            {
-                if (_toggleIsFill)
-                {
-                    ToggleSel.OnInteract();
-                    yield return new WaitForSeconds(0.1f);
-                }
-                SquareSels[val].OnInteract();
-                yield return new WaitForSeconds(0.1f);
-            }
-            while (CurrentShapeInfo[val] % 8 != finalFill)
-            {
-                if (!_toggleIsFill)
-                {
-                    ToggleSel.OnInteract();
-                    yield return new WaitForSeconds(0.1f);
-                }
-                SquareSels[val].OnInteract();
-                yield return new WaitForSeconds(0.1f);
-            }
-        }
-        m = Regex.Match(command, @"^\s*submit\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-        if (m.Success)
+    private IEnumerator TwitchHandleForcedSolve()
+    {
+        for (int i = _stage; i < 3; i++)
         {
-            yield return null;
-            SubmitSel.OnInteract();
-            yield return new WaitForSeconds(0.1f);
+            while (_isAnimating)
+                yield return true;
+            SquareSels[_correctIxs[0] * 5 + _correctIxs[1]].OnInteract();
         }
-        m = Regex.Match(command, @"^\s*reset\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-        if (m.Success)
-        {
-            yield return null;
-            ResetSel.OnInteract();
-            yield return new WaitForSeconds(0.1f);
-        }
-        yield break;
+        while (!_moduleSolved)
+            yield return true;
     }
 }

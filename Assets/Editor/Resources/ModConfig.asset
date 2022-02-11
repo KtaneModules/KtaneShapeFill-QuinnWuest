@@ -20,6 +20,6 @@ MonoBehaviour:
     Manual by Asew54321
 
     Developed by Quinn Wuest'
-  version: 1.0
+  version: 2.0
   outputFolder: build
-  previewImage: {fileID: 2800000, guid: 523d88607edc73847a9b7699f15ac710, type: 3}
+  previewImage: {fileID: 2800000, guid: 958c5ee78639bef47ad2cf6ff11eee92, type: 3}

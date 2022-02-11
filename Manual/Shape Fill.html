@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="initial-scale=1">
+        <title>Shape Fill — Keep Talking and Nobody Explodes Module</title>
+        <link rel="stylesheet" type="text/css" href="css/font.css">
+        <link rel="stylesheet" type="text/css" href="css/normalize.css">
+        <link rel="stylesheet" type="text/css" href="css/main.css">
+        <script src="js/ktane-utils.js"></script>
+        <style>
+        .shape-fill-list {
+            margin: 0em auto;
+            text-align: center;
+        }
+        .shape-fill-restrictions {
+            margin: 0em auto;
+        }
+        .dark table, table {
+            border: none;
+        }
+        .hstack {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            text-align: center;
+        }
+        .hstack table {
+            width: 47%;
+            margin: 0.5em;
+        }
+        .hstack td {
+            font-size: 9pt;
+        }
+        .dark td img {
+            filter: invert(90%);
+        }
+        </style>
+    </head>
+<body>
+    <div class="section">
+        <div class="page page-bg-05">
+            <div class="page-header">
+                <span class="page-header-doc-title">Keep Talking and Nobody Explodes Mod</span>
+                <span class="page-header-section-title">Shape Fill</span>
+            </div>
+            <div class="page-content">
+                <img src="img/Component/Shape Fill.svg" class="diagram">
+                <h2>On the Subject of Shape Fill</h2>
+                <p class="flavour-text">Establish regularity in irregularity and familiarity in the unfamiliar.</p>
+                <p>A Shape Fill module contains a 5×5 grid filled with various shapes and fills and a screen indicating the current stage.</p>
+                <p>The various shapes and fills that can appear on the module are shown below:</p>
+                <table class="shape-fill-list empty">
+                    <tr>
+                        <th>Circle</th>
+                        <td><img src="img/Shape Fill/CircleEmpty.png" style="width: 40px;"></td>
+                        <td class="empty" rowspan='8' style="width:50px;"></td>
+                        <th>Cross</th>
+                        <td><img src="img/Shape Fill/CircleCross.png" style="width: 40px;"></td>
+                    </tr>
+                    <tr>
+                        <th>Diamond</th>
+                        <td><img src="img/Shape Fill/DiamondEmpty.png" style="width: 40px;"></td>
+                        <th>Diagonal</th>
+                        <td><img src="img/Shape Fill/CircleDiagonal.png" style="width: 40px;"></td>
+                    </tr>
+                    <tr>
+                        <th>Heart</th>
+                        <td><img src="img/Shape Fill/HeartEmpty.png" style="width: 40px;"></td>
+                        <th>Dots</th>
+                        <td><img src="img/Shape Fill/CircleDots.png" style="width: 40px;"></td>
+                    </tr>
+                    <tr>
+                        <th>Octagon</th>
+                        <td><img src="img/Shape Fill/OctagonEmpty.png" style="width: 40px;"></td>
+                        <th>Empty</th>
+                        <td><img src="img/Shape Fill/CircleEmpty.png" style="width: 40px;"></td>
+                    </tr>
+                    <tr>
+                        <th>Square</th>
+                        <td><img src="img/Shape Fill/SquareEmpty.png" style="width: 40px;"></td>
+                        <th>Filled</th>
+                        <td><img src="img/Shape Fill/CircleFill.png" style="width: 40px;"></td>
+                    </tr>
+                    <tr>
+                        <th>Star</th>
+                        <td><img src="img/Shape Fill/StarEmpty.png" style="width: 40px;"></td>
+                        <th>Horizontal</th>
+                        <td><img src="img/Shape Fill/CircleHorizontal.png" style="width: 40px;"></td>
+                    </tr>
+                    <tr>
+                        <th>Trapezoid</th>
+                        <td><img src="img/Shape Fill/TrapezoidEmpty.png" style="width: 40px;"></td>
+                        <th>Vertical</th>
+                        <td><img src="img/Shape Fill/CircleVertical.png" style="width: 40px;"></td>
+                    </tr>
+                    <tr>
+                        <th>Triangle</th>
+                        <td><img src="img/Shape Fill/TriangleEmpty.png" style="width: 40px;"></td>
+                        <th>X</th>
+                        <td><img src="img/Shape Fill/CircleX.png" style="width: 40px;"></td>
+                    </tr>
+                </table>
+                <p>Each shape and fill is assigned three rules each, for each stage of the module.</p>
+                <p>For the first stage, every shape except for one and every fill except for one will be present in the grid. Use the missing shape and fill for either the row or column.</p>
+                <p>Shape rules will always refer to rows. Fill rules will always refer to columns.</p>
+                <p>Exactly one row or column will obey the discovered rule. Press on the cell in the grid that is found at the intersection for the given row/column.</p>
+                <p><em>For the next two stages, the rules to use are determined by the shape and fill you pressed in the previous stage.</em></p>
+                <p>Upon successfully completing three stages, the module will disarm.</p>
+                </div>
+            <div class="page-footer relative-footer">Page 1 of 3</div>
+            </div>
+            
+            <div class="page page-bg-05">
+            <div class="page-header">
+                <span class="page-header-doc-title">Keep Talking and Nobody Explodes Mod</span>
+                <span class="page-header-section-title">Shape Fill</span>
+            </div>
+            <div class="page-content">
+            <h3>Shapes</h3>
+            <p>Refer to the rules in these tables based on the determined shape. The first row indicates the rule for the first stage, the second row indicates the rule for the second stage, and the third row indicates the rule for the third stage.</p>
+                <div class="hstack">
+                
+                <table>
+                <tr><th colspan='2'>Circle</th></tr>
+                <tr>
+                <td rowspan='3'><img src="img/shape Fill/CircleEmpty.png" style="width: 50px;"></td>
+                <td>The row must not contain any squares.</td></tr>
+                <tr><td>The row must contain exactly three unique shapes.</td></tr>
+                <tr><td>The rows immediately above and below this one (wrapping around) must have exactly four or six unique shapes.</td></tr>
+                </table>
+                
+                <table>
+                <tr><th colspan='2'>Diamond</th></tr>
+                <tr>
+                <td rowspan='3'><img src="img/shape Fill/DiamondEmpty.png" style="width: 50px;"></td>
+                <td>The row must contain exactly one heart.</td></tr>
+                <tr><td>The row must contain either diamonds or octagons, but not both.</td></tr>
+                <tr><td>The row and the row immediately above (wrapping around) have the same shape count.</td></tr>
+                </table>
+                
+                <table>
+                <tr><th colspan='2'>Heart</th></tr>
+                <tr>
+                <td rowspan='3'><img src="img/shape Fill/HeartEmpty.png" style="width: 50px;"></td>
+                <td>The row must contain exactly two trapezoids.</td></tr>
+                <tr><td>The row has an equal number of squares and diamonds.</td></tr>
+                <tr><td>The row and the row two below this one (wrapping around) have a total of seven unique shapes.</td></tr>
+                </table>
+                
+                <table>
+                <tr><th colspan='2'>Octagon</th></tr>
+                <tr>
+                <td rowspan='3'><img src="img/shape Fill/OctagonEmpty.png" style="width: 50px;"></td>
+                <td>The row must not contain either trapezoids or stars.</td></tr>
+                <tr><td>The row must have both or neither of hearts and triangles.</td></tr>
+                <tr><td>The row contains exactly two of the following: circles, squares, diamonds.</td></tr>
+                </table>
+                
+                <table>
+                <tr><th colspan='2'>Square</th></tr>
+                <tr>
+                <td rowspan='3'><img src="img/shape Fill/SquareEmpty.png" style="width: 50px;"></td>
+                <td>The row must contain both a diamond and a triangle.</td></tr>
+                <tr><td>The row must have an even number of unique shapes.</td></tr>
+                <tr><td>The row contains two more shapes than the row below it (wrapping around).</td></tr>
+                </table>
+                
+                <table>
+                <tr><th colspan='2'>Star</th></tr>
+                <tr>
+                <td rowspan='3'><img src="img/shape Fill/StarEmpty.png" style="width: 50px;"></td>
+                <td>The row must contain exactly one circle.</td></tr>
+                <tr><td>The row contains five different shapes.</td></tr>
+                <tr><td>The number of total squares, diamonds, and trapezoids in this row must be 3 or 5.</td></tr>
+                </table>
+                
+                <table>
+                <tr><th colspan='2'>Trapezoid</th></tr>
+                <tr>
+                <td rowspan='3'><img src="img/shape Fill/TrapezoidEmpty.png" style="width: 50px;"></td>
+                <td>The row must not contain any octagons.</td></tr>
+                <tr><td>The row contains either both or neither of circles and octagons.</td></tr>
+                <tr><td>The row and the row two above this one (wrapping around) have a total of six unique shapes.</td></tr>
+                </table>
+                
+                <table>
+                <tr><th colspan='2'>Triangle</th></tr>
+                <tr>
+                <td rowspan='3'><img src="img/shape Fill/TriangleEmpty.png" style="width: 50px;"></td>
+                <td>The row must contain exactly two squares.</td></tr>
+                <tr><td>The row contains either both or neither of diamonds and triangles.</td></tr>
+                <tr><td>The rows two above and two below the current row (wrapping around) have the same number of shapes.</td></tr>
+                </table>
+                
+                </div>
+            </div>
+    
+            <div class="page-footer relative-footer">Page 2 of 3</div>
+        </div>
+        
+        <div class="page page-bg-05">
+            <div class="page-header">
+                <span class="page-header-doc-title">Keep Talking and Nobody Explodes Mod</span>
+                <span class="page-header-section-title">Shape Fill</span>
+            </div>
+            <div class="page-content">
+            <h3>Fills</h3>
+            <p>Refer to the rules in these tables based on the determined fill. The first row indicates the rule for the first stage, the second row indicates the rule for the second stage, and the third row indicates the rule for the third stage.</p>
+                <div class="hstack">
+                
+                <table>
+                <tr><th colspan='2'>Cross</th></tr>
+                <tr>
+                <td rowspan='3'><img src="img/shape Fill/CircleCross.png" style="width: 50px;"></td>
+                <td>The column must not contain any filled fills.</td></tr>
+                <tr><td>The column must contain exactly three unique fills.</td></tr>
+                <tr><td>The columns immediately adjacent to this one (wrapping around) must have exactly four or six unique fills.</td></tr>
+                </table>
+                
+                <table>
+                <tr><th colspan='2'>Diagonal</th></tr>
+                <tr>
+                <td rowspan='3'><img src="img/shape Fill/CircleDiagonal.png" style="width: 50px;"></td>
+                <td>The column must contain exactly one dots fill.</td></tr>
+                <tr><td>The column must contain either diagonal or empty fills, but not both.</td></tr>
+                <tr><td>The column and the column immediately left (wrapping around) have the same fill count.</td></tr>
+                </table>
+                
+                <table>
+                <tr><th colspan='2'>Dots</th></tr>
+                <tr>
+                <td rowspan='3'><img src="img/shape Fill/CircleDots.png" style="width: 50px;"></td>
+                <td>The column must contain exactly two vertical fills.</td></tr>
+                <tr><td>The column has an equal number of diagonal and filled fills.</td></tr>
+                <tr><td>The column and the column two to the right (wrapping around) have a total of seven unique fills.</td></tr>
+                </table>
+                
+                <table>
+                <tr><th colspan='2'>Empty</th></tr>
+                <tr>
+                <td rowspan='3'><img src="img/shape Fill/CircleEmpty.png" style="width: 50px;"></td>
+                <td>The column must not contain either horizontal or vertical fills.</td></tr>
+                <tr><td>This column must have both or neither of dots and X fills.</td></tr>
+                <tr><td>This column contains exactly two of the following: cross, diagonal, filled.</td></tr>
+                </table>
+                
+                <table>
+                <tr><th colspan='2'>Filled</th></tr>
+                <tr>
+                <td rowspan='3'><img src="img/shape Fill/CircleFill.png" style="width: 50px;"></td>
+                <td>The column must contain both a dots and an X fill.</td></tr>
+                <tr><td>The column must have an even number of unique fills.</td></tr>
+                <tr><td>The column contains two more fills than the column to its immediate right (wrapping around).</td></tr>
+                </table>
+                
+                <table>
+                <tr><th colspan='2'>Horizontal</th></tr>
+                <tr>
+                <td rowspan='3'><img src="img/shape Fill/CircleHorizontal.png" style="width: 50px;"></td>
+                <td>The column must contain exactly one cross.</td></tr>
+                <tr><td>The column contains five different fills.</td></tr>
+                <tr><td>The number of total filled, diagonal, and vertical fills in this column must be 3 or 5.</td></tr>
+                </table>
+                
+                <table>
+                <tr><th colspan='2'>Vertical</th></tr>
+                <tr>
+                <td rowspan='3'><img src="img/shape Fill/CircleVertical.png" style="width: 50px;"></td>
+                <td>The column must not contain any empty fills.</td></tr>
+                <tr><td>The column contains either both or neither of cross and empty fills.</td></tr>
+                <tr><td>The column and the column two to its right (wrapping around) have a total of six unique fills.</td></tr>
+                </table>
+                
+                <table>
+                <tr><th colspan='2'>X</th></tr>
+                <tr>
+                <td rowspan='3'><img src="img/shape Fill/CircleX.png" style="width: 50px;"></td>
+                <td>The column must contain exactly two filled fills.</td></tr>
+                <tr><td>The column contains either both or neither of diagonal and X fills.</td></tr>
+                <tr><td>The columns two to the right and two to the left left (wrapping around) have the same number of fills.</td></tr>
+                </table>
+                
+                </div>
+            </div>
+            <div class="page-footer relative-footer">Page 3 of 3</div>
+        </div>
+        </div>
+    </body>
+</html>
