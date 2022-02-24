@@ -280,8 +280,8 @@ public class ShapeFillScript : MonoBehaviour
                         {
                             if (!c1.Contains(_gridIxs[sfc][ixFirst][ixSecond]))
                                 c1.Add(_gridIxs[sfc][ixFirst][ixSecond]);
-                            if (!c2.Contains(_gridIxs[sfc][(ixFirst + 2) % 5][ixSecond]))
-                                c2.Add(_gridIxs[sfc][(ixFirst + 2) % 5][ixSecond]);
+                            if (!c2.Contains(_gridIxs[sfc][(ixFirst + 1) % 5][ixSecond]))
+                                c2.Add(_gridIxs[sfc][(ixFirst + 1) % 5][ixSecond]);
                         }
                         if (c1.Count == c2.Count + 2)
                             checkList.Add(ixFirst);
