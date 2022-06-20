@@ -37,7 +37,7 @@ public class ShapeFillScript : MonoBehaviour
     private int[] _correctIxs = new int[2];
     private int[] _correctShapeFillPress = new int[2];
     private int[][] _displayIxs = new int[5][] { new int[5], new int[5], new int[5], new int[5], new int[5] };
-    private bool _isAnimating;
+    private bool _isAnimating = true;
 
     private void Start()
     {
