@@ -23,6 +23,7 @@ public class ShapeFillScript : MonoBehaviour
     private int _moduleId;
     private static int _moduleIdCounter = 1;
     private bool _moduleSolved;
+    private bool _trueModuleSolved;
 
     private static readonly string[] _shapeNames = { "Circle", "Diamond", "Heart", "Octagon", "Square", "Star", "Trapezoid", "Triangle" };
     private static readonly string[] _fillNames = { "Cross", "Diagonal", "Dots", "Empty", "Fill", "Horizontal", "Vertical", "X" };
@@ -457,6 +458,7 @@ public class ShapeFillScript : MonoBehaviour
             yield return new WaitForSeconds(0.05f);
         }
         Module.HandlePass();
+        _trueModuleSolved = true;
     }
 
 #pragma warning disable 0414
@@ -484,7 +486,7 @@ public class ShapeFillScript : MonoBehaviour
                 yield return true;
             SquareSels[_correctIxs[0] * 5 + _correctIxs[1]].OnInteract();
         }
-        while (!_moduleSolved)
+        while (!_trueModuleSolved)
             yield return true;
     }
 }
